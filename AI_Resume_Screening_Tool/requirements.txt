@@ -11,3 +11,4 @@ numpy
 ffmpeg
 pydub
 sentence_transformers
+SpeechRecognition
