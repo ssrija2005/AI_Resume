@@ -4,4 +4,5 @@ pymongo
 scikit-learn
 pdfplumber
 flask_pymongo
+docx2txt
 gunicorn
