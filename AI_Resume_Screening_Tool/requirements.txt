@@ -1,0 +1,6 @@
+flask
+flask-cors
+pymongo
+scikit-learn
+pdfplumber
+gunicorn

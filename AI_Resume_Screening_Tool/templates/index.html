@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Resume Screening</title>
+    <video autoplay muted loop id="bgVideo">
+      <source src="https://cdn.pixabay.com/video/2016/11/04/6266-190550868_large.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <style>
+        footer{
+            width: max-content;
+            color: #333333;
+        }
+      #bgVideo {
+        position: fixed;
+      top: 0;
+      left: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+        h1,h2{
+            color: #f4eded;
+            margin-bottom: 15px;
+
+        }
+        button {
+      background-color: #007bff;
+      color: white;
+      border: groove;
+      width: max-content;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        textarea {
+            width: 100%;
+        }
+        #candidates {
+      max-width: 600px;
+    }
+
+    .score {
+      font-size: 14px;
+      color: #555;
+      margin-top: 5px;
+    }
+        #message {
+            margin-top: 10px;
+            font-weight: bold;
+            color: green;
+        }
+        #chatBotContainer {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #f9efef;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      width: 260px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #teddyEmoji {
+      font-size: 20px;
+      margin-bottom: 5px;
+    }
+
+    #chatBotHeader {
+      font-size: 14px;
+      font-weight: bold;
+      color: #333333;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    #chatBox {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      width: 100%;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 13px;
+      padding: 10px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+    #chatInput {
+      width: 100%;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid #ced4da;
+      font-size: 12px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+
+    #sendMessageButton,
+    #voiceInputButton {
+      padding: 8px;
+      font-size: 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      transition: background-color 0.3s;
+      margin-right: 5px;
+    }
+
+    #sendMessageButton:hover,
+    #voiceInputButton:hover {
+      background-color: #0056b3;
+    }
+    </style>
+</head>
+<body>
+    <center>
+        <h1><span>TSSPioneer</span></h1>
+    <h2>Upload Resume(s)</h2>
+    <form id="upload-form" method="POST" action="/upload" enctype="multipart/form-data">
+       
+        <input type="file" name="resume" id="resume" multiple accept=".pdf,.docx,.mp4" required>
+
+        <br><br>
+        <textarea name="job_description" placeholder="Enter job description here..." rows="5" cols="50" required></textarea>
+        <br><br>
+        <button type="submit">Upload</button>
+    </form>
+
+    <div id="message"></div>
+
+    <h2>Ranked Candidates</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Filename</th>
+                <th>Relevance Score</th>
+                <th>Cultural Score</th>
+                <th>Bias Score</th>
+                <th>Final Score</th>
+            </tr>
+        </thead>
+        <tbody id="candidates-table-body"></tbody>
+    </table>
+</center>
+    <!-- ChatBot Section -->
+<div id="chatBotContainer">
+  <div id="teddyEmoji">🧸</div>
+  <div id="chatBotHeader">TedBot</div>
+  <div id="chatBox"></div>
+  <input type="text" id="chatInput" placeholder="Ask TedBot..." />
+  <div style="display: flex; gap: 5px;">
+    <button id="voiceInputButton">🎤</button>
+    <button id="sendMessageButton" onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+
+    <script>
+       const voiceInputButton = document.getElementById("voiceInputButton");
+       const chatInput = document.getElementById("chatInput");
+       const chatBox = document.getElementById("chatBox");
+       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+       if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        voiceInputButton.addEventListener("click", () => {
+            recognition.start();
+        });
+
+        recognition.addEventListener("result", (event) => {
+            const transcript = event.results[0][0].transcript;
+            chatInput.value = transcript;
+        });
+
+        recognition.addEventListener("end", () => {
+            console.log("Voice recognition ended.");
+        });
+
+        recognition.addEventListener("error", (event) => {
+            console.error("SpeechRecognition error:", event.error);
+        });
+      } else {
+           alert("Speech Recognition not supported. Use latest Chrome/Edge.");
+  }
+
+  async function sendMessage() {
+    const userMessage = chatInput.value.trim();
+    if (!userMessage) return;
+
+    chatBox.innerHTML += `<div><strong>You:</strong> ${userMessage}</div>`;
+    chatInput.value = "";
+
+    const response = await fetch("/chatbot", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userMessage })
+            }).then(res => res.json()).then(data => {
+                return data.reply;
+            }).catch(err => {
+                console.error(err);
+                return "Sorry, I couldn't process that.";
+            });
+    chatBox.innerHTML += `<div><strong>TedBot:</strong> ${response}</div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+        document.getElementById("upload-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const files = form.querySelector('#resume').files;
+            const jobDescription = form.querySelector('textarea[name="job_description"]').value;
+            const messageDiv = document.getElementById("message");
+
+            if (!files.length) {
+                alert("Please select at least one file.");
+                return;
+            }
+
+            messageDiv.textContent = "Uploading and processing resumes...";
+
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append("resume", file);
+                formData.append("job_description", jobDescription);
+
+                await fetch("/upload", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.message) {
+                        messageDiv.textContent = "All resumes processed successfully!";
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert("Upload failed: " + err);
+                });
+            }
+
+            loadCandidates();
+        });
+
+        function loadCandidates() {
+            fetch("/candidates")
+                .then(res => res.json())
+                .then(data => {
+                    const tableBody = document.getElementById("candidates-table-body");
+                    tableBody.innerHTML = "";
+                    data.forEach((candidate, index) => {
+                        const row = `<tr>
+                            <td>${index + 1}</td>
+                            <td>${candidate.filename}</td>
+                            <td>${candidate.relevance_score.toFixed(2)}</td>
+                            <td>${candidate.cultural_score.toFixed(2)}</td>
+                            <td>${candidate.bias_score.toFixed(2)}</td>
+                            <td>${candidate.final_score.toFixed(2)}</td>
+                        </tr>`;
+                        tableBody.innerHTML += row;
+                    });
+                });
+        }
+
+        loadCandidates(); // Load table on initial page load
+    </script>
+</body>
+</html>
