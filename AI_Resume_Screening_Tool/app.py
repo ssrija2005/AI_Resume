@@ -14,8 +14,7 @@ from sentence_transformers import SentenceTransformer, util
 
 
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "uploads"
-app.config["MONGO_URI"] = "mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/<dbname>?retryWrites=true&w=majority"
+
 mongo = PyMongo(app)
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
