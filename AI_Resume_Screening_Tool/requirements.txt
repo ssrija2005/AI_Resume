@@ -9,6 +9,5 @@ gunicorn
 PyPDF2
 numpy 
 ffmpeg
-speech_recognition
 pydub
 sentence_transformers
