@@ -11,13 +11,16 @@ import ffmpeg
 import speech_recognition as sr
 from pydub import AudioSegment
 from sentence_transformers import SentenceTransformer, util
-
+from flask import session, redirect, url_for
+from pymongo import MongoClient
 
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "uploads"
-app.config["MONGO_URI"] = "mongodb+srv://ssrija2005@gmail.com:sundargee@cluster0.mongodb.net/resumeDB?retryWrites=true&w=majority"
+app.secret_key = 'your_secret_key'  # Add this line for sessions
 
+app.config["UPLOAD_FOLDER"] = "uploads"
+app.config['MONGO_URI'] = 'mongodb://localhost:27017/resume_db'  # Replace with your actual MongoDB UR
 mongo = PyMongo(app)
+
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
@@ -99,17 +102,56 @@ def compute_bias_score(content):
     score = max(0, 100 - bias_hits * 20)
     return round(score, 2)
 
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
 
+        # Check if username and password match in the MongoDB collection
+        user = mongo.db.users.find_one({'username': username, 'password': password})
+        if user:
+            session['username'] = username
+            return redirect(url_for('index'))  # Redirect to the index page after successful login
+        else:
+            return "Invalid username or password!"
+    return render_template('login.html')
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
 
-@app.route("/")
+        # Check if the username already exists
+        existing_user = mongo.db.users.find_one({'username': username})
+        if existing_user:
+            return "Username already exists! Please choose a different username."
+
+        # Store new user in MongoDB
+        mongo.db.users.insert_one({'username': username, 'password': password})
+        return redirect(url_for('login'))  # Redirect to login page after successful registration
+
+    return render_template('register.html')
+
+@app.route('/index')
 def index():
-    return render_template("index.html")
+    if 'username' in session:
+        return render_template('index.html', username=session['username'])  # Display your index.html
+    else:
+        return redirect(url_for('login'))  # If no session, redirect to login
 
+@app.route('/logout')
+def logout():
+    session.pop('username', None)  # Log out the user by removing the session
+    return redirect(url_for('login'))
 
 
 @app.route("/upload", methods=["POST"])
 def upload_resume():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
     uploaded_file = request.files["resume"]
     if uploaded_file.filename != "":
         filename = secure_filename(uploaded_file.filename)
@@ -160,6 +202,9 @@ def upload_resume():
 
 @app.route("/candidates", methods=["GET"])
 def get_candidates():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
     candidates = list(mongo.db.candidates.find({}, {"_id": 0}))
     sorted_candidates = sorted(candidates, key=lambda x: x['final_score'], reverse=True)
     
@@ -169,6 +214,9 @@ def get_candidates():
     return jsonify(sorted_candidates)
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
     data = request.json
     message = data.get("message", "").lower()
 
@@ -195,6 +243,6 @@ def chatbot():
 if __name__ == "__main__":
     if not os.path.exists("uploads"):
         os.makedirs("uploads")
-    app.run(debug=False, threaded=True)
+    app.run(debug=True)
 
 
